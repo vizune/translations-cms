@@ -7,6 +7,7 @@ export type TranslationEntry = {
   key: string;
   values: Record<LocaleCode, string>;
   isOpen: boolean;
+  isNew?: boolean;
 };
 
 function uid() {
@@ -61,7 +62,10 @@ export const useTranslationsStore = defineStore("translations", {
     },
     updateKey(id: string, nextKey: string) {
       const entry = this.entries.find((e) => e.id === id);
-      if (entry) entry.key = nextKey;
+      if (entry) {
+        entry.key = nextKey;
+        entry.isNew = false;
+      }
     },
     updateValue(id: string, locale: LocaleCode, value: string) {
       const entry = this.entries.find((e) => e.id === id);
@@ -69,11 +73,12 @@ export const useTranslationsStore = defineStore("translations", {
     },
     addEntry() {
       const blankValues = Object.fromEntries(this.locales.map((l) => [l, ""]));
-      this.entries.push({
+      this.entries.unshift({
         id: uid(),
         key: "new.key",
         values: blankValues,
         isOpen: true,
+        isNew: true,
       });
     },
     addLocale(locale: LocaleCode) {
@@ -107,6 +112,12 @@ export const useTranslationsStore = defineStore("translations", {
     },
     clearJsonOutput() {
       this.jsonOutput = "";
+    },
+    expandAll() {
+      for (const entry of this.entries) entry.isOpen = true;
+    },
+    collapseAll() {
+      for (const entry of this.entries) entry.isOpen = false;
     },
   },
 });

@@ -1,26 +1,73 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useTranslationsStore } from "../stores/translations";
 import SearchBar from "./SearchBar.vue";
 import JsonOutputPanel from "./JsonOutputPanel.vue";
+import TranslationRow from "./TranslationRow.vue";
 
 const store = useTranslationsStore();
 
 const editingId = ref<string | null>(null);
 const draftKey = ref("");
+const draftValues = ref<Record<string, string>>({});
 
-function startEdit(id: string, currentKey: string) {
-  editingId.value = id;
-  draftKey.value = currentKey;
+const allExpanded = computed(() =>
+  store.filteredEntries.length > 0 &&
+  store.filteredEntries.every((e) => e.isOpen),
+);
+
+function toggleViewAll() {
+  if (allExpanded.value) store.collapseAll();
+  else store.expandAll();
 }
 
-function saveEdit(id: string) {
-  store.updateKey(id, draftKey.value.trim() || "untitled.key");
-  editingId.value = null;
+function beginEdit(id: string) {
+  const entry = store.entries.find((e) => e.id === id);
+  if (!entry) return;
+
+  editingId.value = id;
+  draftKey.value = entry.key;
+  // clone values so we can cancel safely
+  draftValues.value = { ...entry.values };
+
+  // Optional: auto-open the row when editing
+  if (!entry.isOpen) store.toggleOpen(id);
 }
 
 function cancelEdit() {
   editingId.value = null;
+  draftKey.value = "";
+  draftValues.value = {};
+}
+
+function saveEdit(id: string) {
+  store.updateKey(id, draftKey.value.trim() || "untitled.key");
+
+  // commit all locale values in one go
+  for (const locale of store.locales) {
+    store.updateValue(id, locale, draftValues.value[locale] ?? "");
+  }
+
+  cancelEdit();
+}
+
+function updateDraftValue(locale: string, value: string) {
+  draftValues.value = { ...draftValues.value, [locale]: value };
+}
+
+const isEditing = (id: string) => editingId.value === id;
+
+function addNewEntry() {
+  store.addEntry();
+
+  const newest = store.entries[0];
+  if (!newest) return;
+
+  // start editing immediately so it’s obvious what to do next
+  beginEdit(newest.id);
+
+  // optional: clear search so it doesn't "hide" the new entry
+  // store.clearSearch();
 }
 </script>
 
@@ -36,7 +83,7 @@ function cancelEdit() {
           Translations
         </h1>
         <p class="mt-1 text-sm text-slate-500">
-          Click a key to edit, expand to edit locale values.
+          Expand to view values. Click Edit to make changes.
         </p>
       </div>
 
@@ -49,6 +96,13 @@ function cancelEdit() {
         <div class="flex items-center gap-2">
           <button
             type="button"
+            class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 active:scale-[0.98]"
+            @click="toggleViewAll"
+          >
+            {{ allExpanded ? "Collapse all" : "View all" }}
+          </button>
+          <button
+            type="button"
             class="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-700 active:scale-[0.98]"
             @click="store.generateJson"
           >
@@ -59,7 +113,7 @@ function cancelEdit() {
           <button
             type="button"
             aria-label="Add translation"
-            @click="store.addEntry"
+            @click="addNewEntry"
             class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-base leading-none hover:bg-slate-100 active:scale-[0.98]"
           >
             ➕
@@ -92,82 +146,21 @@ function cancelEdit() {
 
     <!-- Accordion list -->
     <ul v-else class="m-0 list-none p-0">
-      <li v-for="entry in store.filteredEntries" :key="entry.id" class="border-t border-slate-100 first:border-t-0">
-
-        <!-- Row -->
-        <div class="grid grid-cols-[44px_1fr] items-center px-3 py-2">
-          <button
-            type="button"
-            class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
-            @click="store.toggleOpen(entry.id)"
-            :aria-expanded="entry.isOpen"
-          >
-            <span
-              class="inline-block text-lg transition-transform duration-150 ease-in-out"
-              :class="entry.isOpen ? 'rotate-90' : 'rotate-0'"
-            >
-              ›
-            </span>
-          </button>
-
-          <div class="min-w-0">
-            <!-- View mode: key button -->
-            <button
-              v-if="editingId !== entry.id"
-              type="button"
-              class="block w-full truncate rounded-xl px-3 py-2 text-left font-semibold text-slate-900 hover:bg-slate-50"
-              :title="`Edit key: ${entry.key}`"
-              @click="startEdit(entry.id, entry.key)"
-            >
-              {{ entry.key }}
-            </button>
-
-            <!-- Edit mode -->
-            <div v-else class="flex flex-wrap items-center gap-2 px-3 py-1">
-              <input
-                v-model="draftKey"
-                type="text"
-                class="h-10 w-full min-w-[240px] flex-1 rounded-xl border border-slate-200 px-3 text-slate-900 outline-none focus:border-slate-400"
-                @keydown.enter.prevent="saveEdit(entry.id)"
-                @keydown.esc.prevent="cancelEdit"
-                autofocus
-              />
-
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  class="h-10 rounded-xl border border-slate-200 bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800 active:scale-[0.99]"
-                  @click="saveEdit(entry.id)"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  class="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-900 hover:bg-slate-50 active:scale-[0.99]"
-                  @click="cancelEdit"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Expanded content -->
-        <div v-if="entry.isOpen" class="px-3 pb-4 pl-14">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label v-for="locale in store.locales" :key="locale" class="grid gap-1.5">
-              <span class="text-xs font-medium text-slate-500">{{ locale }}</span>
-              <input
-                class="h-10 w-full rounded-xl border border-slate-200 px-3 text-slate-900 outline-none focus:border-slate-400"
-                type="text"
-                :value="entry.values[locale] ?? ''"
-                @input="store.updateValue(entry.id, locale, ($event.target as HTMLInputElement).value)"
-              />
-            </label>
-          </div>
-        </div>
-      </li>
+      <TranslationRow
+        v-for="entry in store.filteredEntries"
+        :key="entry.id"
+        :entry="entry"
+        :locales="store.locales"
+        :is-editing="isEditing(entry.id)"
+        :draft-key="draftKey"
+        :draft-values="draftValues"
+        @toggle="store.toggleOpen(entry.id)"
+        @edit="beginEdit(entry.id)"
+        @updateKey="draftKey = $event"
+        @updateValue="(locale, value) => updateDraftValue(locale, value)"
+        @save="saveEdit(entry.id)"
+        @cancel="cancelEdit"
+      />
     </ul>
 
     <JsonOutputPanel
