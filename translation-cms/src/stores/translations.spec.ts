@@ -10,11 +10,13 @@ describe("translations store", () => {
   it("adds a new entry and opens it", () => {
     const store = useTranslationsStore();
     const before = store.entries.length;
-
+  
     store.addEntry();
-
+  
     expect(store.entries.length).toBe(before + 1);
-    expect(store.entries.at(-1)?.isOpen).toBe(true);
+  
+    const newest = store.entries[0];
+    expect(newest.isOpen).toBe(true);
   });
 
   it("updates a locale value", () => {
