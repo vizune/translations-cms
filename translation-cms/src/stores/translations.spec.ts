@@ -22,8 +22,9 @@ describe("translations store", () => {
   it("updates a locale value", () => {
     const store = useTranslationsStore();
     const first = store.entries[0];
-
+    if (!first) throw new Error("Expected seeded entry");
+  
     store.updateValue(first.id, "en-GB", "Hello");
-    expect(store.entries[0].values["en-GB"]).toBe("Hello");
+    expect(store.entries[0]!.values["en-GB"]).toBe("Hello");
   });
 });
