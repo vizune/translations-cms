@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { importTranslations } from "../utils/importTranslations";
 
 export type LocaleCode = string;
 
@@ -119,5 +120,13 @@ export const useTranslationsStore = defineStore("translations", {
     collapseAll() {
       for (const entry of this.entries) entry.isOpen = false;
     },
+    async importCsv(file: File) {
+      const { locales, entries } = await importTranslations(file);
+
+      this.locales = locales;
+      this.entries = entries;
+      this.searchQuery = "";
+      this.jsonOutput = "";
+    }
   },
 });

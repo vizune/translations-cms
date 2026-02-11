@@ -69,6 +69,25 @@ function addNewEntry() {
   // optional: clear search so it doesn't "hide" the new entry
   // store.clearSearch();
 }
+
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function openFilePicker() {
+  fileInputRef.value?.click();
+}
+
+async function onFilePicked(e: Event) {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  try {
+    await store.importCsv(file);
+  } finally {
+    // allow re-uploading the same file without refreshing
+    input.value = "";
+  }
+}
 </script>
 
 <template>
@@ -94,6 +113,21 @@ function addNewEntry() {
 
         <!-- Actions -->
         <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 active:scale-[0.98]"
+            @click="openFilePicker"
+          >
+            Upload XLSX
+          </button>
+
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".xlsx"
+            class="hidden"
+            @change="onFilePicked"
+          />
           <button
             type="button"
             class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 active:scale-[0.98]"
