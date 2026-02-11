@@ -118,13 +118,13 @@ async function onFilePicked(e: Event) {
             class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 hover:bg-slate-50 active:scale-[0.98]"
             @click="openFilePicker"
           >
-            Upload XLSX
+            Upload CSV
           </button>
 
           <input
             ref="fileInputRef"
             type="file"
-            accept=".xlsx"
+            accept=".csv"
             class="hidden"
             @change="onFilePicked"
           />
