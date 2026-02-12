@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { TRANSLATION_SETS } from "../config/translationSets";
 import { useTranslationsStore } from "../stores/translations";
 import { importTranslations } from "../utils/importTranslations";
 import JsonOutputModal from "./JsonOutputModal.vue";
@@ -121,6 +122,22 @@ function applySet(setId?: string) {
 
   setPickerOpen.value = false;
 }
+
+const setsWithCounts = computed(() => {
+  if (!parsedCsv.value) {
+    return TRANSLATION_SETS.map((s) => ({
+      ...s,
+      count: 0,
+    }));
+  }
+
+  return TRANSLATION_SETS.map((s) => ({
+    ...s,
+    count: parsedCsv.value!.entries.filter((e) =>
+      e.key.startsWith(s.id + "."),
+    ).length,
+  }));
+});
 </script>
 
 <template>
@@ -178,7 +195,7 @@ function applySet(setId?: string) {
 
   <TranslationSetModal
     :open="setPickerOpen"
-    :sets="parsedCsv?.sets ?? []"
+    :sets="setsWithCounts"
     @close="setPickerOpen = false"
     @select="applySet"
   />

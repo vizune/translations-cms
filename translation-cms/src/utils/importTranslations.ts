@@ -1,23 +1,16 @@
 import Papa from "papaparse";
 import type { LocaleCode, TranslationEntry } from "../stores/translations";
 
-type ImportResult = {
+export type ImportResult = {
   locales: LocaleCode[];
   entries: TranslationEntry[];
   duplicateKeys: number;
-  sets: { id: string; count: number }[];
 };
 
 const normalize = (v: unknown) =>
   String(v ?? "")
     .replace(/\u00a0/g, " ") // NBSP -> normal space
     .trim();
-
-function getSetIdFromKey(key: string) {
-  const firstDot = key.indexOf(".");
-  if (firstDot <= 0) return "unknown";
-  return key.slice(0, firstDot).trim() || "unknown";
-}
 
 export function importTranslations(file: File): Promise<ImportResult> {
   return new Promise((resolve, reject) => {
@@ -43,8 +36,7 @@ export function importTranslations(file: File): Promise<ImportResult> {
               fields.find((h) => h.toLowerCase().includes("identifier/key")) ??
               "Identifier/Key: Dev only";
 
-            const keyIndex = fields.indexOf(keyHeader);
-            if (keyIndex === -1) {
+            if (!fields.includes(keyHeader)) {
               reject(
                 new Error(
                   `Couldn't find the key column. Expected something like "Identifier/Key: Dev only".`,
@@ -52,6 +44,8 @@ export function importTranslations(file: File): Promise<ImportResult> {
               );
               return;
             }
+
+            const keyIndex = fields.indexOf(keyHeader);
 
             // Locale headers come after key until the first blank header
             const locales: LocaleCode[] = [];
@@ -64,17 +58,11 @@ export function importTranslations(file: File): Promise<ImportResult> {
             const map = new Map<string, TranslationEntry>();
             let duplicates = 0;
 
-            // Collect sets (prefix before first dot)
-            const setCounts = new Map<string, number>();
-
             for (const row of result.data) {
               const key = normalize(row[keyHeader]);
               if (!key) continue;
 
               if (map.has(key)) duplicates++;
-
-              const setId = getSetIdFromKey(key);
-              setCounts.set(setId, (setCounts.get(setId) ?? 0) + 1);
 
               const values: Record<LocaleCode, string> = {} as any;
               for (const locale of locales) {
@@ -90,15 +78,10 @@ export function importTranslations(file: File): Promise<ImportResult> {
               });
             }
 
-            const sets = Array.from(setCounts.entries())
-              .map(([id, count]) => ({ id, count }))
-              .sort((a, b) => b.count - a.count);
-
             resolve({
               locales,
               entries: Array.from(map.values()),
               duplicateKeys: duplicates,
-              sets,
             });
           },
 

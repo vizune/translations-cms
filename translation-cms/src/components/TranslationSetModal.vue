@@ -1,7 +1,13 @@
 <script setup lang="ts">
+type SetOption = {
+  id: string;
+  label: string;
+  count: number;
+};
+
 const props = defineProps<{
   open: boolean;
-  sets: { id: string; count: number }[];
+  sets: ReadonlyArray<SetOption>;
 }>();
 
 const emit = defineEmits<{
@@ -35,8 +41,20 @@ const emit = defineEmits<{
           class="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:bg-slate-50"
           @click="emit('select', s.id)"
         >
-          <span class="font-mono text-sm text-slate-900">{{ s.id }}</span>
-          <span class="text-sm text-slate-500">{{ s.count }} keys</span>
+          <div class="flex flex-col">
+            <span class="text-sm font-medium text-slate-900">
+              {{ s.label }}
+            </span>
+            <span class="text-xs font-mono text-slate-500">
+              {{ s.id }}
+            </span>
+          </div>
+
+          <span
+            class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
+          >
+            {{ s.count }}
+          </span>
         </button>
       </div>
 
