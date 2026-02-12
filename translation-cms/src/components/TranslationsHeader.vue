@@ -61,7 +61,7 @@ const viewAllLabel = computed(() =>
         <input
           ref="fileInputRef"
           type="file"
-          accept=".csv"
+          accept=".csv,text/csv"
           class="hidden"
           @change="onFilePicked"
         />

@@ -12,6 +12,42 @@ const normalize = (v: unknown) =>
     .replace(/\u00a0/g, " ") // NBSP -> normal space
     .trim();
 
+/**
+ * Attempts to decode CSV with intelligent encoding fallback.
+ * Handles:
+ * - UTF-8 (Google Sheets, modern exports)
+ * - UTF-16 (Excel sometimes exports this)
+ * - Windows-1250 (Central/Eastern European Excel "ANSI")
+ * - Windows-1252 (Western Europe)
+ */
+function decodeCsv(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+
+  // Detect UTF-16 (lots of NUL bytes is a strong indicator)
+  let nulCount = 0;
+  for (let i = 0; i < Math.min(bytes.length, 2000); i++) {
+    if (bytes[i] === 0) nulCount++;
+  }
+
+  if (nulCount > 10) {
+    // Excel often exports UTF-16LE
+    return new TextDecoder("utf-16le").decode(buffer);
+  }
+
+  // Try UTF-8 strictly
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    // Try Central European Windows encoding (better for Polish)
+    try {
+      return new TextDecoder("windows-1250").decode(buffer);
+    } catch {
+      // Final fallback
+      return new TextDecoder("windows-1252").decode(buffer);
+    }
+  }
+}
+
 export function importTranslations(file: File): Promise<ImportResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -20,9 +56,10 @@ export function importTranslations(file: File): Promise<ImportResult> {
       try {
         const buffer = reader.result as ArrayBuffer;
 
-        // Decode properly (fixes ñ, é, ï, ’ etc. from Windows-1252 exports)
-        const decoder = new TextDecoder("windows-1252");
-        const text = decoder.decode(buffer);
+        let text = decodeCsv(buffer);
+
+        // Remove BOM if present
+        text = text.replace(/^\uFEFF/, "");
 
         Papa.parse<Record<string, string>>(text, {
           header: true,
@@ -33,8 +70,9 @@ export function importTranslations(file: File): Promise<ImportResult> {
 
             // Find key column (tolerant match)
             const keyHeader =
-              fields.find((h) => h.toLowerCase().includes("identifier/key")) ??
-              "Identifier/Key: Dev only";
+              fields.find((h) =>
+                h.toLowerCase().includes("identifier/key"),
+              ) ?? "Identifier/Key: Dev only";
 
             if (!fields.includes(keyHeader)) {
               reject(
@@ -47,7 +85,7 @@ export function importTranslations(file: File): Promise<ImportResult> {
 
             const keyIndex = fields.indexOf(keyHeader);
 
-            // Locale headers come after key until the first blank header
+            // Locale headers come after key until first blank header
             const locales: LocaleCode[] = [];
             for (let i = keyIndex + 1; i < fields.length; i++) {
               const h = normalize(fields[i]);
@@ -65,6 +103,7 @@ export function importTranslations(file: File): Promise<ImportResult> {
               if (map.has(key)) duplicates++;
 
               const values: Record<LocaleCode, string> = {} as any;
+
               for (const locale of locales) {
                 values[locale] = normalize(row[locale]);
               }
