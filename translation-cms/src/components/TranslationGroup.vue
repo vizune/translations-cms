@@ -17,6 +17,7 @@ const draftKey = ref("");
 const draftValues = ref<Record<string, string>>({});
 const setPickerOpen = ref(false);
 const parsedCsv = ref<ParsedCsv | null>(null);
+const selectedSetId = ref<string | null>(null);
 
 const allExpanded = computed(() =>
   store.filteredEntries.length > 0 &&
@@ -113,12 +114,12 @@ async function onCsvUploaded(file: File) {
 }
 
 function applySet(setId: string) {
+  selectedSetId.value = setId;
+
   if (!parsedCsv.value) return;
 
-  const { locales, entries } = parsedCsv.value;
-
-  store.locales = locales;
-  store.entries = entries;
+  store.locales = parsedCsv.value.locales;
+  store.entries = parsedCsv.value.entries;
 
   store.clearSearch();
   store.clearJsonOutput();
