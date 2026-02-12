@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useTranslationsStore } from "../stores/translations";
+import { importTranslations } from "../utils/importTranslations";
 import JsonOutputModal from "./JsonOutputModal.vue";
 import TranslationSetModal from "./TranslationSetModal.vue";
 import TranslationRow from "./TranslationRow.vue";
 import TranslationsHeader from "./TranslationsHeader.vue";
+
+type ParsedCsv = Awaited<ReturnType<typeof importTranslations>>;
 
 const store = useTranslationsStore();
 
 const editingId = ref<string | null>(null);
 const draftKey = ref("");
 const draftValues = ref<Record<string, string>>({});
+const setPickerOpen = ref(false);
+const parsedCsv = ref<ParsedCsv | null>(null);
 
 const allExpanded = computed(() =>
   store.filteredEntries.length > 0 &&
@@ -86,6 +91,36 @@ function clearJsonAndClose() {
   store.clearJsonOutput();
   jsonModalOpen.value = false;
 }
+
+async function onCsvUploaded(file: File) {
+  const result = await importTranslations(file);
+  parsedCsv.value = result;
+
+  if (result.sets.length <= 1) {
+    applySet(result.sets[0]?.id);
+    return;
+  }
+
+  setPickerOpen.value = true;
+}
+
+function applySet(setId?: string) {
+  if (!parsedCsv.value) return;
+
+  const { locales, entries } = parsedCsv.value;
+
+  const filtered = setId
+    ? entries.filter((e) => e.key.startsWith(setId + "."))
+    : entries;
+
+  store.locales = locales;
+  store.entries = filtered;
+
+  store.clearSearch();
+  store.clearJsonOutput();
+
+  setPickerOpen.value = false;
+}
 </script>
 
 <template>
@@ -97,7 +132,7 @@ function clearJsonAndClose() {
       @toggleViewAll="toggleViewAll"
       @generate="generateAndOpenJson"
       @add="addNewEntry"
-      @importCsv="store.importCsv"
+      @importCsv="onCsvUploaded"
     />
 
     <!-- Empty state -->
