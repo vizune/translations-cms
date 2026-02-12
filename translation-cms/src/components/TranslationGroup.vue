@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { useTranslationsStore } from "../stores/translations";
 import JsonOutputModal from "./JsonOutputModal.vue";
+import TranslationSetModal from "./TranslationSetModal.vue";
 import TranslationRow from "./TranslationRow.vue";
 import TranslationsHeader from "./TranslationsHeader.vue";
 
@@ -91,7 +92,6 @@ function clearJsonAndClose() {
   <section
     class="mx-auto mt-8 max-w-4xl rounded-2xl border border-slate-200 bg-white shadow-[0_6px_24px_rgba(0,0,0,0.06)]"
   >
-    <!-- Header -->
     <TranslationsHeader
       :all-expanded="allExpanded"
       @toggleViewAll="toggleViewAll"
@@ -139,12 +139,19 @@ function clearJsonAndClose() {
         @cancel="cancelEdit"
       />
     </ul>
-
-    <JsonOutputModal
-      :open="jsonModalOpen && !!store.jsonOutput"
-      :json="store.jsonOutput"
-      @close="closeJsonModal"
-      @clear="clearJsonAndClose"
-    />
   </section>
+
+  <TranslationSetModal
+    :open="setPickerOpen"
+    :sets="parsedCsv?.sets ?? []"
+    @close="setPickerOpen = false"
+    @select="applySet"
+  />
+
+  <JsonOutputModal
+    :open="jsonModalOpen && !!store.jsonOutput"
+    :json="store.jsonOutput"
+    @close="closeJsonModal"
+    @clear="clearJsonAndClose"
+  />
 </template>
