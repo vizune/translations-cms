@@ -38,7 +38,7 @@ const emit = defineEmits<{
           v-for="s in sets"
           :key="s.id"
           type="button"
-          class="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left hover:bg-slate-50"
+          class="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 mb-3 text-left hover:bg-slate-50"
           @click="emit('select', s.id)"
         >
           <div class="flex flex-col">

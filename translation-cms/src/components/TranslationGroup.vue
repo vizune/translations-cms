@@ -112,17 +112,13 @@ async function onCsvUploaded(file: File) {
   setPickerOpen.value = true;
 }
 
-function applySet(setId?: string) {
+function applySet(setId: string) {
   if (!parsedCsv.value) return;
 
   const { locales, entries } = parsedCsv.value;
 
-  const filtered = setId
-    ? entries.filter((e) => e.key.startsWith(setId + "."))
-    : entries;
-
   store.locales = locales;
-  store.entries = filtered;
+  store.entries = entries;
 
   store.clearSearch();
   store.clearJsonOutput();
