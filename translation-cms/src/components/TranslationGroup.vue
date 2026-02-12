@@ -97,8 +97,15 @@ async function onCsvUploaded(file: File) {
   const result = await importTranslations(file);
   parsedCsv.value = result;
 
-  if (result.sets.length <= 1) {
-    applySet(result.sets[0]?.id);
+  const counts = TRANSLATION_SETS.map((s) => ({
+    id: s.id,
+    count: result.entries.filter((e) => e.key.startsWith(s.id + ".")).length,
+  }));
+
+  const nonEmpty = counts.filter((c) => c.count > 0);
+
+  if (nonEmpty.length === 1) {
+    applySet(nonEmpty[0].id);
     return;
   }
 
