@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { TRANSLATION_SETS } from "../config/translationSets";
 import { useTranslationsStore } from "../stores/translations";
 import { importTranslations } from "../utils/importTranslations";
 import JsonOutputModal from "./JsonOutputModal.vue";
-import TranslationSetModal from "./TranslationSetModal.vue";
 import TranslationRow from "./TranslationRow.vue";
 import TranslationsHeader from "./TranslationsHeader.vue";
 
@@ -15,11 +13,6 @@ const store = useTranslationsStore();
 const editingId = ref<string | null>(null);
 const draftKey = ref("");
 const draftValues = ref<Record<string, string>>({});
-
-// CSV import + set selection
-const setPickerOpen = ref(false);
-const parsedCsv = ref<ParsedCsv | null>(null);
-const selectedSetId = ref<string | null>(null);
 
 // JSON modal
 const jsonModalOpen = ref(false);
@@ -90,59 +83,14 @@ function clearJsonAndClose() {
   jsonModalOpen.value = false;
 }
 
-/**
- * Build counts based on set id as a key prefix (e.g. "shared-translations.foo")
- * If your spreadsheet sets are NOT prefixes, tell me and we’ll switch strategy.
- */
-function countKeysForSet(entries: ParsedCsv["entries"], setId: string) {
-  const prefix = setId + ".";
-  return entries.reduce((acc, e) => (e.key.startsWith(prefix) ? acc + 1 : acc), 0);
-}
-
-const setsWithCounts = computed(() => {
-  const entries = parsedCsv.value?.entries ?? [];
-  return TRANSLATION_SETS.map((s) => ({
-    ...s,
-    count: countKeysForSet(entries, s.id),
-  }));
-});
-
 async function onCsvUploaded(file: File) {
   const result = await importTranslations(file);
-  parsedCsv.value = result;
 
-  // If exactly one set matches keys in this file, auto-select it
-  const nonEmpty = TRANSLATION_SETS
-    .map((s) => ({ id: s.id, count: countKeysForSet(result.entries, s.id) }))
-    .filter((x) => x.count > 0);
-
-  if (nonEmpty.length === 1) {
-    applySet(nonEmpty[0].id);
-    return;
-  }
-
-  // Otherwise ask user which set this CSV belongs to
-  setPickerOpen.value = true;
-}
-
-function applySet(setId: string) {
-  selectedSetId.value = setId;
-
-  if (!parsedCsv.value) return;
-
-  const prefix = setId + ".";
-  const filteredEntries = parsedCsv.value.entries.filter((e) =>
-    e.key.startsWith(prefix),
-  );
-
-  // If filtering yields nothing (e.g. set isn't a prefix), fall back to "all"
-  store.locales = parsedCsv.value.locales;
-  store.entries = filteredEntries.length > 0 ? filteredEntries : parsedCsv.value.entries;
+  store.locales = result.locales;
+  store.entries = result.entries;
 
   store.clearSearch();
   store.clearJsonOutput();
-
-  setPickerOpen.value = false;
 }
 </script>
 
@@ -196,13 +144,6 @@ function applySet(setId: string) {
       />
     </ul>
   </section>
-
-  <TranslationSetModal
-    :open="setPickerOpen"
-    :sets="setsWithCounts"
-    @close="setPickerOpen = false"
-    @select="applySet"
-  />
 
   <JsonOutputModal
     :open="jsonModalOpen && !!store.jsonOutput"
